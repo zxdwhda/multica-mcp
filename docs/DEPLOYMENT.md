@@ -32,6 +32,7 @@ issuer 为 `https://mcp.wildflow.cn/multica`，resource 为 `https://mcp.wildflo
 - 当前无全桶生命周期规则，避免清理永久 DCR 注册记录。后续清理可区分 clients 与过期 pending/code/token，且 claim 存活必须覆盖对应授权有效期。
 - 每次云端部署代码和状态与本地 commit 是不同的验收层；`deploy/build/deployment.json` 记录最近 CLI 上传结果，不代表 ChatGPT 验收通过。
 - 默认 FC 测试域同样受应用 OAuth 保护。共享域名与证书由统一域名任务维护。
+- 2026-09-15 实际 TLS 握手核对：共享域名证书到期时间为 2026-12-14 06:03:53 UTC（北京时间 14:03:53）。共享域名维护任务确认目前通过手动续期及域名部署入口更新，尚未配置定时续期；需要在到期前由域名维护方处理。Multica 函数代码部署不会续期证书。
 
 ## 测试
 
