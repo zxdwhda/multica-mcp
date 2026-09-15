@@ -62,6 +62,7 @@ python3 scripts/smoke_http.py --write
 - API 目录固定到官方源码提交 `7ebe0bf58d99238ccf830c7ed1aa658d4f5807d0`，包括用户凭据访问的插件桥接接口。Daemon、Webhook 和安装令牌专用 API 属于其他认证入口，详见 [API-COVERAGE.md](API-COVERAGE.md)。
 - 所有生成的操作都通过 MCP SDK 注册及派发测试。真实官网测试通过项目/任务/Agent/标签/Skills/小队/自动任务/运行时/工作区读取，以及临时项目、标签、Skill、任务的创建、更新、读取和删除；测试数据已清理。
 - ChatGPT 插件“刷新”成功，实际页面包含全部 395 个工具。本地 stdio 也返回 395 个工具并成功读取官网项目；SIGTERM 正常退出。
+- ChatGPT 实际执行新增目录查询成功（46 个模块），随后新增 Skills、小队、自动任务三个读取各返回 HTTP 200、0 条数据。首次新对话曾停在开头；刷新最终部署的工具快照并追加调用后成功，没有观察到明确的工具数量限制错误。[浏览器验收记录](https://chatgpt.com/c/6aa8fbdb-5aa4-83ec-a430-d176b8194cf3)。
 - 这表示接口已接入、全部开放和上述测试通过，不表示已实际执行过每一个管理员操作、收费操作或 Agent 执行操作，也不表示所有历史或未来服务端版本兼容。官网滚动版本的权限、套餐和功能开关仍由 Multica 决定。
 - 独立记录：[verification-full-api.json](verification-full-api.json)。原 0.3.2 浏览器登录与任务写入验收保留如下。
 

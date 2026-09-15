@@ -257,5 +257,32 @@
       }
     ]
   },
-  "final_deployment_health": 200
+  "final_deployment_health": 200,
+  "chatgpt_acceptance": {
+    "conversation_url": "https://chatgpt.com/c/6aa8fbdb-5aa4-83ec-a430-d176b8194cf3",
+    "final_tool_snapshot_refreshed": true,
+    "catalog_modules": 46,
+    "calls": [
+      {
+        "tool": "multica_api_catalog",
+        "success": true
+      },
+      {
+        "tool": "multica_api_list_skills",
+        "status": 200,
+        "count": 0
+      },
+      {
+        "tool": "multica_api_list_squads",
+        "status": 200,
+        "count": 0
+      },
+      {
+        "tool": "multica_api_list_autopilots",
+        "status": 200,
+        "count": 0
+      }
+    ],
+    "note": "Initial new conversation stopped after introductory text. Refreshing the final snapshot and issuing follow-up calls succeeded; no hard tool-count error was observed."
+  }
 }
