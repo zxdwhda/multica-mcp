@@ -97,5 +97,6 @@
   "tools": 16,
   "write_test": true,
   "tested_at": "2026-09-15",
-  "chatgpt_browser_acceptance": "pending user connection"
+  "chatgpt_browser_acceptance": "Plugin created; OAuth consent page open; awaiting user PAT entry",
+  "chatgpt_plugin_id": "asdk_app_6aa8f019b2008191a824208a7681da62"
 }

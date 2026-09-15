@@ -53,4 +53,4 @@ python3 scripts/smoke_http.py --write
 
 ## 当前验收结果（2026-09-15）
 
-正式域名 TLS、OAuth 授权/兑换/单次使用/刷新/撤销、MCP 初始化和 16 工具目录、真实项目/任务/Agent/状态读取，以及临时任务创建、清空描述、详情、评论、搜索均通过。测试任务已删除（HTTP 204）。逐项状态见 [verification.json](verification.json)。ChatGPT 网页内创建插件及授权尚待用户完成，不将协议测试当作网页验收。
+正式域名 TLS、OAuth 授权/兑换/单次使用/刷新/撤销、MCP 初始化和 16 工具目录、真实项目/任务/Agent/状态读取，以及临时任务创建、清空描述、详情、评论、搜索均通过。测试任务已删除（HTTP 204）。逐项状态见 [verification.json](verification.json)。ChatGPT 网页内已创建 `multica-mcp` 插件并打开 OAuth 授权页，PAT 输入及最终连接确认等待用户完成；不将协议测试当作网页验收。
