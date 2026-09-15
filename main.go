@@ -60,6 +60,7 @@ func main() {
 
 	useCase := app.NewUseCase(client, cfg.ReadOnly)
 	mcpSrv := mcpserver.NewServer(useCase, cfg.ReadOnly)
+	mcpSrv.RegisterAPI(client, cfg.ReadOnly)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -68,7 +69,7 @@ func main() {
 	case "http":
 		runHTTP(mcpSrv.GetMCPServer(), cfg, ctx)
 	default:
-		runStdio(mcpSrv.GetMCPServer())
+		runStdio(ctx, mcpSrv.GetMCPServer())
 	}
 }
 
@@ -95,8 +96,8 @@ func resolveWorkspace(client *multica.Client) string {
 	return ""
 }
 
-func runStdio(mcpServer *mcp.Server) {
-	if err := mcpServer.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
+func runStdio(ctx context.Context, mcpServer *mcp.Server) {
+	if err := mcpServer.Run(ctx, &mcp.StdioTransport{}); err != nil && !errors.Is(err, context.Canceled) {
 		slog.Error("stdio server error", "error", err)
 		os.Exit(1)
 	}
@@ -123,7 +124,7 @@ func httpHandler(mcpServer *mcp.Server, cfg *config.Config) (http.Handler, error
 		fmt.Fprintf(w, `{"status":"ok","version":%q}`, version.Version)
 	})
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
+		r.Body = http.MaxBytesReader(w, r.Body, 12*1024*1024)
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		mux.ServeHTTP(w, r)
 	}), nil

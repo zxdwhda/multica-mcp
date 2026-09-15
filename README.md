@@ -4,7 +4,7 @@
 
 ## 功能
 
-16 个工具：项目列表/详情、任务列表/详情/搜索、Agent 列表、状态目录、触发预览、任务创建/子任务/批量创建/更新/分配、评论，以及固定拆解模板。
+395 个工具：官方当前 378 个用户 API 操作、原有 16 个便捷工具，以及 1 个 API 目录查询工具。覆盖项目、任务、评论、Agent、运行、小队、Skills、自动任务、工作区、成员、集成、插件、账号管理等，包含写入、删除和执行控制。完整清单见 [API-COVERAGE.md](docs/API-COVERAGE.md)。
 
 - 对接官方 `https://api.multica.ai` 或自托管 Multica；支持 workspace ID/slug。
 - stdio 与 Streamable HTTP；HTTP 无状态、JSON 响应，支持 FC 多实例。
@@ -13,6 +13,7 @@
 - 分页返回 `items`、`source_total`、`has_more`、`next_offset`。全文搜索的项目/状态/负责人筛选在单页结果中执行，必须继续翻页；空页不代表没有后续匹配。
 - 任务详情的部分读取失败列入 `warnings`。批量创建失败返回已创建 ID、失败项及 `isError`，避免误报全量成功。
 - 写操作可能触发 Agent；用触发预览、`suppress_run` 或 `backlog` 明确控制。批量创建是顺序操作，没有事务或自动去重。
+- 新增 `multica_api_*` 工具使用 `path`、`query`、`body`、`headers`、`files` 参数；返回上游 `status` 和完整 JSON `body`，HTTP 错误标记为 `isError`。不移除上游新增字段，支持 PATCH/DELETE、multipart 上传、二进制下载和 204 空响应。
 
 ## 构建
 
@@ -51,10 +52,10 @@ python3 scripts/deploy_fc.py
 
 ## 边界
 
-- 当前为固定工作区、固定 PAT 的自用连接器；不是多租户 Multica 登录服务。PAT 轮换使 OAuth 存储解密失效，需要重新连接。
+- 当前为固定 PAT、默认工作区的自用连接器；新增账号级和路径指定工作区的操作遵守该 PAT 在 Multica 的权限，不限于任务管理。不是多租户 Multica 登录服务。部署 PAT 轮换使 OAuth 存储解密失效，需要重新连接。
 - OAuth access token 有效 1 小时，refresh token 有效 30 天；刷新令牌使用后失效，重放会撤销该授权链。
 - dry_run 仅做本地预览，不验证远程 ID、权限和完整业务规则。
 - 拆解工具返回固定四步模板，不调用模型生成计划。
-- 目标 API 契约基于 Multica 0.4.43；官网为滚动版本，以真实调用结果为准。
+- 0.4.0 的 API 目录固定到官方提交 `7ebe0bf58d99`（2026-09-15）。当前官网已做实际调用验证；未承诺所有历史或未来 Multica 版本支持每个接口。版本来源、覆盖范围与测试层次见 API 清单和部署文档。
 
 来源说明见 [UPSTREAM.md](UPSTREAM.md)，原始资料在 `docs/upstream/`。

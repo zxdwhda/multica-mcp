@@ -5,7 +5,7 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
  def redirect_request(self,*args,**kwargs):return None
 opener=urllib.request.build_opener(NoRedirect)
 def main():
- parser=argparse.ArgumentParser();parser.add_argument("--base",default="https://mcp.wildflow.cn");parser.add_argument("--write",action="store_true");parser.add_argument("--redirect-uri",default="https://chatgpt.com/connector_platform/oauth/callback");args=parser.parse_args()
+ parser=argparse.ArgumentParser();parser.add_argument("--base",default="https://mcp.wildflow.cn");parser.add_argument("--write",action="store_true");parser.add_argument("--full-api",action="store_true");parser.add_argument("--redirect-uri",default="https://chatgpt.com/connector_platform/oauth/callback");args=parser.parse_args()
  base=args.base.rstrip('/');origin="https://mcp.wildflow.cn";resource=origin+"/multica/mcp"
  cfg=json.loads((pathlib.Path.home()/".multica/config.json").read_text());checks=[]
  def call(path,body=None,headers=None,method=None):
@@ -36,8 +36,35 @@ def main():
  def tool(name,arguments):
   data=rpc('tools/call',{'name':name,'arguments':arguments});assert not data.get('isError'),data.get('content');return data.get('structuredContent',{})
  rpc('initialize',{'protocolVersion':'2025-06-18','capabilities':{},'clientInfo':{'name':'deployment-smoke','version':'1'}})
- catalog=rpc('tools/list',{});assert len(catalog['tools'])==16
+ catalog=rpc('tools/list',{});api_catalog=json.loads((pathlib.Path(__file__).resolve().parents[1]/'internal/apicatalog/catalog.json').read_text());assert len(catalog['tools'])==17+len(api_catalog['operations'])
  for name in ['multica_list_projects','multica_list_tasks','multica_list_agents','multica_list_statuses']:tool(name,{})
+ if args.full_api:
+  for name in ['list_projects','list_issues','list_agents','list_labels','list_skills','list_squads','list_autopilots','list_agent_runtimes','list_workspaces']:
+   result=tool('multica_api_'+name,{})
+   assert result['status']==200,(name,result['status'])
+  marker='mcp-api-verification-'+secrets.token_hex(4)
+  for kind,body,field,updated in [
+   ('project',{'title':marker,'description':'Temporary API verification','status':'planned'},'description','Updated through full API'),
+   ('label',{'name':marker,'color':'#3B82F6','description':'Temporary API verification','resource_type':'issue'},'description','Updated through full API'),
+   ('skill',{'name':marker,'description':'Temporary API verification','content':'# Verification\nTemporary test only.'},'description','Updated through full API')]:
+   created_id=None
+   try:
+    created_result=tool('multica_api_create_'+kind,{'body':body})
+    assert created_result['status'] in [200,201],created_result['status']
+    created_body=created_result['body'];created_id=created_body['id']
+    changed=tool('multica_api_update_'+kind,{'path':{'id':created_id},'body':{field:updated}})
+    assert changed['status']==200,changed['status']
+    if kind!='label':
+     got=tool('multica_api_get_'+kind,{'path':{'id':created_id}})
+     assert got['body'][field]==updated
+    else:
+     got=tool('multica_api_list_labels',{})
+     rows=got['body'] if isinstance(got['body'],list) else got['body']['labels']
+     assert any(x['id']==created_id and x[field]==updated for x in rows)
+   finally:
+    if created_id:
+     removed=tool('multica_api_delete_'+kind,{'path':{'id':created_id}})
+     assert removed['status'] in [200,204],removed['status']
  if args.write:
   created=[]
   try:
@@ -54,5 +81,5 @@ def main():
  status,h,raw=form('/multica/token',{'grant_type':'refresh_token','client_id':client,'refresh_token':tokens['refresh_token'],'resource':resource});expect('refresh token',status,200);new=json.loads(raw);access=new['access_token'];tool('multica_list_projects',{})
  status,h,raw=form('/multica/revoke',{'client_id':client,'token':new['refresh_token']});expect('revoke',status,200)
  status,h,raw=call('/multica/mcp',b'{}',{'Authorization':'Bearer '+access,'Content-Type':'application/json'});expect('revoked access rejected',status,401)
- out=pathlib.Path(__file__).resolve().parents[1]/'deploy/build';out.mkdir(parents=True,exist_ok=True);(out/'smoke-results.json').write_text(json.dumps({'base':base,'checks':checks,'tools':len(catalog['tools']),'write_test':args.write},indent=2));print('All smoke checks passed',flush=True)
+ out=pathlib.Path(__file__).resolve().parents[1]/'deploy/build';out.mkdir(parents=True,exist_ok=True);(out/'smoke-results.json').write_text(json.dumps({'base':base,'checks':checks,'tools':len(catalog['tools']),'write_test':args.write,'full_api_test':args.full_api},indent=2));print('All smoke checks passed',flush=True)
 if __name__=='__main__':main()

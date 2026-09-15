@@ -97,7 +97,7 @@ func (s *Server) register(w http.ResponseWriter, r *http.Request) {
 	jsonOut(w, 201, map[string]any{"client_id": id, "redirect_uris": in.Redirects, "client_id_issued_at": time.Now().Unix(), "token_endpoint_auth_method": "none", "grant_types": []string{"authorization_code", "refresh_token"}, "response_types": []string{"code"}})
 }
 
-var consent = template.Must(template.New("consent").Parse(`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>连接 Multica</title><body><main><h1>连接 WildFlow Multica</h1><p>授权此客户端读取及操作当前工作区的项目、任务、评论与 Agent。</p><p>授权后返回：<strong>{{.Redirect}}</strong></p><form method="post" action="{{.Action}}"><input type="hidden" name="request" value="{{.Request}}"><label>当前 Multica PAT <input type="password" name="pat" required autocomplete="off"></label><p>使用此连接器所属 Multica 账号的有效 PAT 确认身份。PAT 不会发送给客户端。</p><button type="submit">授权连接</button></form></main></body></html>`))
+var consent = template.Must(template.New("consent").Parse(`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>连接 Multica</title><body><main><h1>连接 WildFlow Multica</h1><p>授权此客户端使用当前 Multica 账号可用的 API，包括项目、任务、Agent、运行、小队、Skills、自动任务、工作区及账号管理。具体权限由 Multica 账号决定。</p><p>授权后返回：<strong>{{.Redirect}}</strong></p><form method="post" action="{{.Action}}"><input type="hidden" name="request" value="{{.Request}}"><label>当前 Multica PAT <input type="password" name="pat" required autocomplete="off"></label><p>使用此连接器所属 Multica 账号的有效 PAT 确认身份。PAT 不会发送给客户端。</p><button type="submit">授权连接</button></form></main></body></html>`))
 
 func (s *Server) authorize(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()

@@ -62,7 +62,7 @@ func (s *Server) registerTools(readOnly bool) {
 }
 
 func (s *Server) addTool(tool *mcp.Tool, handler mcp.ToolHandler) {
-	read := strings.HasPrefix(tool.Name, "multica_list_") || strings.HasPrefix(tool.Name, "multica_get_") || strings.HasPrefix(tool.Name, "multica_search_") || strings.HasPrefix(tool.Name, "multica_preview_") || strings.Contains(tool.Name, "plan_task")
+	read := tool.Name == "multica_api_catalog" || strings.HasPrefix(tool.Name, "multica_list_") || strings.HasPrefix(tool.Name, "multica_get_") || strings.HasPrefix(tool.Name, "multica_search_") || strings.HasPrefix(tool.Name, "multica_preview_") || strings.Contains(tool.Name, "plan_task")
 	destructive, open := !read, true
 	tool.Annotations = &mcp.ToolAnnotations{ReadOnlyHint: read, DestructiveHint: &destructive, OpenWorldHint: &open, IdempotentHint: read}
 	mcp.AddTool(s.mcpServer, tool, func(ctx context.Context, req *mcp.CallToolRequest, input map[string]any) (*mcp.CallToolResult, any, error) {

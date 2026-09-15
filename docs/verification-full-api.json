@@ -1,0 +1,261 @@
+{
+  "base": "https://mcp.wildflow.cn",
+  "checks": [
+    {
+      "check": "health",
+      "status": 200
+    },
+    {
+      "check": "unauthenticated MCP",
+      "status": 401
+    },
+    {
+      "check": "DCR",
+      "status": 201
+    },
+    {
+      "check": "consent page",
+      "status": 200
+    },
+    {
+      "check": "PAT approval",
+      "status": 303
+    },
+    {
+      "check": "code exchange",
+      "status": 200
+    },
+    {
+      "check": "code replay rejected",
+      "status": 400
+    },
+    {
+      "check": "initialize",
+      "status": 200
+    },
+    {
+      "check": "tools/list",
+      "status": 200
+    },
+    {
+      "check": "multica_list_projects",
+      "status": 200
+    },
+    {
+      "check": "multica_list_tasks",
+      "status": 200
+    },
+    {
+      "check": "multica_list_agents",
+      "status": 200
+    },
+    {
+      "check": "multica_list_statuses",
+      "status": 200
+    },
+    {
+      "check": "multica_api_list_projects",
+      "status": 200
+    },
+    {
+      "check": "multica_api_list_issues",
+      "status": 200
+    },
+    {
+      "check": "multica_api_list_agents",
+      "status": 200
+    },
+    {
+      "check": "multica_api_list_labels",
+      "status": 200
+    },
+    {
+      "check": "multica_api_list_skills",
+      "status": 200
+    },
+    {
+      "check": "multica_api_list_squads",
+      "status": 200
+    },
+    {
+      "check": "multica_api_list_autopilots",
+      "status": 200
+    },
+    {
+      "check": "multica_api_list_agent_runtimes",
+      "status": 200
+    },
+    {
+      "check": "multica_api_list_workspaces",
+      "status": 200
+    },
+    {
+      "check": "multica_api_create_project",
+      "status": 200
+    },
+    {
+      "check": "multica_api_update_project",
+      "status": 200
+    },
+    {
+      "check": "multica_api_get_project",
+      "status": 200
+    },
+    {
+      "check": "multica_api_delete_project",
+      "status": 200
+    },
+    {
+      "check": "multica_api_create_label",
+      "status": 200
+    },
+    {
+      "check": "multica_api_update_label",
+      "status": 200
+    },
+    {
+      "check": "multica_api_list_labels",
+      "status": 200
+    },
+    {
+      "check": "multica_api_delete_label",
+      "status": 200
+    },
+    {
+      "check": "multica_api_create_skill",
+      "status": 200
+    },
+    {
+      "check": "multica_api_update_skill",
+      "status": 200
+    },
+    {
+      "check": "multica_api_get_skill",
+      "status": 200
+    },
+    {
+      "check": "multica_api_delete_skill",
+      "status": 200
+    },
+    {
+      "check": "multica_create_task",
+      "status": 200
+    },
+    {
+      "check": "multica_update_task",
+      "status": 200
+    },
+    {
+      "check": "multica_get_task",
+      "status": 200
+    },
+    {
+      "check": "multica_add_comment",
+      "status": 200
+    },
+    {
+      "check": "multica_search_tasks",
+      "status": 200
+    },
+    {
+      "check": "cleanup temporary issue",
+      "status": 204
+    },
+    {
+      "check": "refresh token",
+      "status": 200
+    },
+    {
+      "check": "multica_list_projects",
+      "status": 200
+    },
+    {
+      "check": "revoke",
+      "status": 200
+    },
+    {
+      "check": "revoked access rejected",
+      "status": 401
+    }
+  ],
+  "tools": 395,
+  "write_test": true,
+  "full_api_test": true,
+  "version": "0.4.0",
+  "tested_at": "2026-09-15",
+  "generated_api_operations": 378,
+  "registered_tools": 395,
+  "source_revision": "7ebe0bf58d99238ccf830c7ed1aa658d4f5807d0",
+  "deployment": {
+    "functionName": "multica-mcp",
+    "runtime": "custom.debian11",
+    "codeChecksum": "16540294859082864345",
+    "lastModifiedTime": "2026-09-15T08:06:41Z",
+    "state": null,
+    "region": "ap-southeast-1",
+    "qualifier": "LATEST",
+    "publicEndpoint": "https://mcp.wildflow.cn/multica/mcp",
+    "triggers": [
+      {
+        "createdTime": "2026-09-15T06:57:55Z",
+        "description": "",
+        "httpTrigger": {
+          "urlInternet": "https://multica-mcp-uyoeldzxta.ap-southeast-1.fcapp.run",
+          "urlIntranet": "https://multica-mcp-uyoeldzxta.ap-southeast-1-vpc.fcapp.run"
+        },
+        "invocationRole": null,
+        "lastModifiedTime": "2026-09-15T06:57:55Z",
+        "qualifier": "LATEST",
+        "sourceArn": null,
+        "status": null,
+        "targetArn": null,
+        "triggerConfig": "{\"methods\":[\"GET\",\"POST\",\"DELETE\",\"OPTIONS\"],\"authType\":\"anonymous\",\"disableURLInternet\":false}",
+        "triggerId": "87087fe0-9b38-4412-80f7-8c5c14be0087",
+        "triggerName": "http",
+        "triggerType": "http"
+      }
+    ]
+  },
+  "stdio": {
+    "version": "0.4.0",
+    "tools": 395,
+    "real_read_status": 200,
+    "sigterm_exit_code": 0
+  },
+  "chatgpt_catalog": {
+    "refresh_succeeded": true,
+    "tool_rows": 395
+  },
+  "verification_scope": "Every generated operation was dispatched in MCP SDK tests. Live write/read/delete used isolated projects, labels, skills and a task; administrative, billing, credential and execution-start operations were not invoked.",
+  "live_smoke_deployment": {
+    "functionName": "multica-mcp",
+    "runtime": "custom.debian11",
+    "codeChecksum": "10560972669921282771",
+    "lastModifiedTime": "2026-09-15T08:00:30Z",
+    "state": null,
+    "region": "ap-southeast-1",
+    "qualifier": "LATEST",
+    "publicEndpoint": "https://mcp.wildflow.cn/multica/mcp",
+    "triggers": [
+      {
+        "createdTime": "2026-09-15T06:57:55Z",
+        "description": "",
+        "httpTrigger": {
+          "urlInternet": "https://multica-mcp-uyoeldzxta.ap-southeast-1.fcapp.run",
+          "urlIntranet": "https://multica-mcp-uyoeldzxta.ap-southeast-1-vpc.fcapp.run"
+        },
+        "invocationRole": null,
+        "lastModifiedTime": "2026-09-15T06:57:55Z",
+        "qualifier": "LATEST",
+        "sourceArn": null,
+        "status": null,
+        "targetArn": null,
+        "triggerConfig": "{\"methods\":[\"GET\",\"POST\",\"DELETE\",\"OPTIONS\"],\"authType\":\"anonymous\",\"disableURLInternet\":false}",
+        "triggerId": "87087fe0-9b38-4412-80f7-8c5c14be0087",
+        "triggerName": "http",
+        "triggerType": "http"
+      }
+    ]
+  },
+  "final_deployment_health": 200
+}
