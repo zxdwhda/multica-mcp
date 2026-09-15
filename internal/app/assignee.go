@@ -20,8 +20,7 @@ func (u *UseCase) resolveAssigneeType(ctx context.Context, assigneeID string, ex
 
 	agents, err := u.client.ListAgents(ctx)
 	if err != nil {
-		member := string(domain.AssigneeTypeMember)
-		return &member, nil
+		return nil, fmt.Errorf("resolve assignee type: %w; provide explicit assignee_type", err)
 	}
 	for _, a := range agents {
 		if a.ID == assigneeID {

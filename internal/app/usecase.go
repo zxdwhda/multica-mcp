@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"strings"
 
 	"multica-mcp/internal/domain"
@@ -53,16 +52,16 @@ func (u *UseCase) GetTask(ctx context.Context, input domain.GetTaskInput) (*doma
 		return nil, err
 	}
 
-	comments, err := u.client.ListComments(ctx, input.TaskID)
+	comments, err := u.client.ListComments(ctx, task.ID)
 	if err != nil {
-		slog.Warn("failed to load comments for task", "task_id", input.TaskID, "error", err)
+		task.Warnings = append(task.Warnings, fmt.Sprintf("comments unavailable: %v", err))
 	} else {
 		task.Comments = comments
 	}
 
-	children, err := u.client.ListChildIssues(ctx, input.TaskID)
+	children, err := u.client.ListChildIssues(ctx, task.ID)
 	if err != nil {
-		slog.Warn("failed to load subtasks for task", "task_id", input.TaskID, "error", err)
+		task.Warnings = append(task.Warnings, fmt.Sprintf("subtasks unavailable: %v", err))
 	} else {
 		task.Subtasks = children
 	}
@@ -71,6 +70,9 @@ func (u *UseCase) GetTask(ctx context.Context, input domain.GetTaskInput) (*doma
 }
 
 func (u *UseCase) CreateTask(ctx context.Context, input domain.CreateTaskInput) (*domain.CreateTaskResult, error) {
+	if err := validateCreate(input.Title, input.Priority, input.Stage); err != nil {
+		return nil, err
+	}
 	if err := u.checkReadOnly(); err != nil {
 		return nil, err
 	}
@@ -78,7 +80,7 @@ func (u *UseCase) CreateTask(ctx context.Context, input domain.CreateTaskInput) 
 	if input.DryRun {
 		return &domain.CreateTaskResult{
 			Title:      input.Title,
-			Status:     "todo",
+			Status:     stringPtrValue(input.Status, "todo"),
 			Identifier: "(dry run)",
 		}, nil
 	}
@@ -105,6 +107,9 @@ func (u *UseCase) CreateTask(ctx context.Context, input domain.CreateTaskInput) 
 }
 
 func (u *UseCase) CreateSubtask(ctx context.Context, input domain.CreateSubtaskInput) (*domain.CreateTaskResult, error) {
+	if err := validateCreate(input.Title, nil, input.Stage); err != nil {
+		return nil, err
+	}
 	if err := u.checkReadOnly(); err != nil {
 		return nil, err
 	}
@@ -249,6 +254,17 @@ func (u *UseCase) PlanTaskBreakdown(ctx context.Context, input domain.PlanTaskBr
 }
 
 func (u *UseCase) CreateTaskWithSubtasks(ctx context.Context, input domain.CreateTaskWithSubtasksInput) (*domain.CreateTaskWithSubtasksResult, error) {
+	if err := validateCreate(input.Title, nil, nil); err != nil {
+		return nil, err
+	}
+	if len(input.Subtasks) > 50 {
+		return nil, fmt.Errorf("at most 50 subtasks per call")
+	}
+	for _, sub := range input.Subtasks {
+		if err := validateCreate(sub.Title, nil, nil); err != nil {
+			return nil, err
+		}
+	}
 	if err := u.checkReadOnly(); err != nil {
 		return nil, err
 	}
@@ -268,8 +284,7 @@ func (u *UseCase) CreateTaskWithSubtasks(ctx context.Context, input domain.Creat
 			}
 		}
 		return &domain.CreateTaskWithSubtasksResult{
-			Parent:   parent,
-			Subtasks: subs,
+			Parent: parent, Subtasks: subs, Complete: true,
 		}, nil
 	}
 
@@ -304,7 +319,7 @@ func (u *UseCase) CreateTaskWithSubtasks(ctx context.Context, input domain.Creat
 		Subtasks: make([]domain.CreateTaskResult, 0, len(input.Subtasks)),
 	}
 
-	for _, sub := range input.Subtasks {
+	for index, sub := range input.Subtasks {
 		subInput := domain.CreateTaskInput{
 			ProjectID:     input.ProjectID,
 			ParentIssueID: &parent.ID,
@@ -316,7 +331,7 @@ func (u *UseCase) CreateTaskWithSubtasks(ctx context.Context, input domain.Creat
 
 		subTask, err := u.client.CreateTask(ctx, subInput)
 		if err != nil {
-			slog.Warn("failed to create subtask", "title", sub.Title, "error", err)
+			result.Failures = append(result.Failures, domain.SubtaskFailure{Index: index, Title: sub.Title, Error: err.Error()})
 			continue
 		}
 
@@ -328,6 +343,7 @@ func (u *UseCase) CreateTaskWithSubtasks(ctx context.Context, input domain.Creat
 		})
 	}
 
+	result.Complete = len(result.Failures) == 0
 	return result, nil
 }
 
@@ -395,4 +411,17 @@ func stringPtrValue(s *string, fallback string) string {
 		return *s
 	}
 	return fallback
+}
+
+func validateCreate(title string, priority *string, stage *int) error {
+	if strings.TrimSpace(title) == "" {
+		return fmt.Errorf("title must not be empty")
+	}
+	if priority != nil && !domain.Priority(*priority).IsValid() {
+		return fmt.Errorf("invalid priority")
+	}
+	if stage != nil && *stage < 1 {
+		return fmt.Errorf("stage must be >=1")
+	}
+	return nil
 }

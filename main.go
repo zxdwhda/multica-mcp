@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -19,6 +20,7 @@ import (
 	mcpserver "multica-mcp/internal/mcp"
 	"multica-mcp/internal/middleware"
 	"multica-mcp/internal/multica"
+	"multica-mcp/internal/oauth"
 	"multica-mcp/internal/version"
 )
 
@@ -64,7 +66,7 @@ func main() {
 
 	switch cfg.MCPTransport {
 	case "http":
-		runHTTP(mcpSrv.GetMCPServer(), cfg.HTTPPort, cfg.MCPAPIKey, ctx)
+		runHTTP(mcpSrv.GetMCPServer(), cfg, ctx)
 	default:
 		runStdio(mcpSrv.GetMCPServer())
 	}
@@ -100,36 +102,53 @@ func runStdio(mcpServer *mcp.Server) {
 	}
 }
 
-func runHTTP(mcpServer *mcp.Server, port int, apiKey string, ctx context.Context) {
-	streamable := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server {
-		return mcpServer
-	}, nil)
-
-	handler := http.Handler(streamable)
-	if apiKey != "" {
-		throttle := middleware.NewLoginThrottle(5, 1*time.Minute, 15*time.Minute)
-		handler = throttle.Wrap(apiKey, handler)
-		slog.Info("API key authentication enabled", "max_failures", 5, "ban_duration", "15m")
+func httpHandler(mcpServer *mcp.Server, cfg *config.Config) (http.Handler, error) {
+	streamable := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return mcpServer }, &mcp.StreamableHTTPOptions{Stateless: true, JSONResponse: true})
+	mux := http.NewServeMux()
+	var handler http.Handler = streamable
+	if cfg.OAuthOrigin != "" {
+		store, e := oauth.NewOSSStore(cfg.OSSEndpoint, cfg.OSSBucket, cfg.MulticaToken)
+		if e != nil {
+			return nil, e
+		}
+		auth := &oauth.Server{Origin: cfg.OAuthOrigin, Prefix: cfg.HTTPPrefix, PAT: cfg.MulticaToken, Store: store}
+		auth.Routes(mux)
+		handler = auth.Protect(handler)
+	} else if cfg.MCPAPIKey != "" {
+		handler = middleware.NewLoginThrottle(5, time.Minute, 15*time.Minute).Wrap(cfg.MCPAPIKey, handler)
 	}
-
-	addr := fmt.Sprintf(":%d", port)
-	httpServer := &http.Server{
-		Addr:    addr,
-		Handler: handler,
+	mux.Handle(cfg.HTTPPrefix+"/mcp", handler)
+	mux.HandleFunc("GET "+cfg.HTTPPrefix+"/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"status":"ok","version":%q}`, version.Version)
+	})
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, 1024*1024)
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		mux.ServeHTTP(w, r)
+	}), nil
+}
+func runHTTP(mcpServer *mcp.Server, cfg *config.Config, ctx context.Context) {
+	handler, err := httpHandler(mcpServer, cfg)
+	if err != nil {
+		slog.Error("HTTP setup failed", "error", err)
+		os.Exit(1)
 	}
-
-	slog.Info("starting HTTP MCP server", "addr", addr)
-
-	go func() {
-		if err := httpServer.ListenAndServe(); err != nil {
-			slog.Error("HTTP server error", "error", err)
+	httpServer := &http.Server{Addr: fmt.Sprintf(":%d", cfg.HTTPPort), Handler: handler, ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 90 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 32 * 1024}
+	done := make(chan error, 1)
+	go func() { done <- httpServer.ListenAndServe() }()
+	slog.Info("HTTP server ready", "port", cfg.HTTPPort, "path", cfg.HTTPPrefix+"/mcp", "stateless", true)
+	select {
+	case err := <-done:
+		if !errors.Is(err, http.ErrServerClosed) {
+			slog.Error("HTTP server failed", "error", err)
 			os.Exit(1)
 		}
-	}()
-
-	<-ctx.Done()
-	slog.Info("shutting down")
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	httpServer.Shutdown(shutdownCtx)
+	case <-ctx.Done():
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := httpServer.Shutdown(shutdownCtx); err != nil {
+			slog.Error("shutdown failed", "error", err)
+		}
+	}
 }

@@ -308,3 +308,37 @@ func TestAddComment(t *testing.T) {
 		t.Errorf("expected content 'hello world', got %q", comment.Content)
 	}
 }
+
+func TestPartialBatchReturnsCreatedIDsAndFailure(t *testing.T) {
+	uc, ts := setupTestServer(func(w http.ResponseWriter, r *http.Request) {
+		var b map[string]any
+		json.NewDecoder(r.Body).Decode(&b)
+		if b["title"] == "bad" {
+			http.Error(w, `{"error":"rejected"}`, 400)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]any{"id": b["title"], "title": b["title"], "status": "todo"})
+	})
+	defer ts.Close()
+	result, err := uc.CreateTaskWithSubtasks(t.Context(), domain.CreateTaskWithSubtasksInput{Title: "parent", Subtasks: []domain.SubtaskDef{{Title: "ok"}, {Title: "bad"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Complete || len(result.Subtasks) != 1 || len(result.Failures) != 1 || result.Parent.ID != "parent" || result.Failures[0].Index != 1 {
+		t.Fatalf("%+v", result)
+	}
+}
+func TestGetTaskReportsMissingSections(t *testing.T) {
+	uc, ts := setupTestServer(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/issues/id" {
+			json.NewEncoder(w).Encode(map[string]any{"id": "id"})
+			return
+		}
+		http.Error(w, "unavailable", 503)
+	})
+	defer ts.Close()
+	task, e := uc.GetTask(t.Context(), domain.GetTaskInput{TaskID: "id"})
+	if e != nil || len(task.Warnings) != 2 {
+		t.Fatalf("%+v %v", task, e)
+	}
+}

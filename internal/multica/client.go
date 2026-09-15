@@ -27,7 +27,7 @@ type Client struct {
 
 func NewClient(baseURL, token, clientVersion string) *Client {
 	return &Client{
-		baseURL:       baseURL,
+		baseURL:       strings.TrimRight(baseURL, "/"),
 		token:         token,
 		clientVersion: strings.TrimSpace(clientVersion),
 		httpClient: &http.Client{
@@ -111,7 +111,7 @@ func (c *Client) ListWorkspaces(ctx context.Context) ([]domain.Workspace, error)
 
 func (c *Client) GetWorkspace(ctx context.Context, id string) (*domain.Workspace, error) {
 	var resp domain.Workspace
-	if err := c.doGet(ctx, "/api/workspaces/"+id, &resp, false); err != nil {
+	if err := c.doGet(ctx, "/api/workspaces/"+url.PathEscape(id), &resp, false); err != nil {
 		return nil, fmt.Errorf("get workspace %s: %w", id, err)
 	}
 	return &resp, nil
@@ -127,7 +127,7 @@ func (c *Client) ListProjects(ctx context.Context) ([]domain.Project, error) {
 }
 
 func (c *Client) GetProject(ctx context.Context, projectID string) (*domain.Project, error) {
-	path := "/api/projects/" + projectID
+	path := "/api/projects/" + url.PathEscape(projectID)
 	var resp domain.Project
 	if err := c.doGet(ctx, path, &resp, true); err != nil {
 		return nil, fmt.Errorf("get project %s: %w", projectID, err)
@@ -162,7 +162,7 @@ func (c *Client) ListTasks(ctx context.Context, opts domain.ListTasksInput) ([]d
 }
 
 func (c *Client) GetTask(ctx context.Context, taskID string) (*domain.Task, error) {
-	path := "/api/issues/" + taskID
+	path := "/api/issues/" + url.PathEscape(taskID)
 	var resp domain.Task
 	if err := c.doGet(ctx, path, &resp, true); err != nil {
 		return nil, fmt.Errorf("get task %s: %w", taskID, err)
@@ -171,7 +171,7 @@ func (c *Client) GetTask(ctx context.Context, taskID string) (*domain.Task, erro
 }
 
 func (c *Client) ListChildIssues(ctx context.Context, parentID string) ([]domain.Task, error) {
-	path := "/api/issues/" + parentID + "/children"
+	path := "/api/issues/" + url.PathEscape(parentID) + "/children"
 	var resp listIssuesResponse
 	if err := c.doGet(ctx, path, &resp, true); err != nil {
 		return nil, fmt.Errorf("list child issues for %s: %w", parentID, err)
@@ -225,7 +225,7 @@ func (c *Client) CreateTask(ctx context.Context, input domain.CreateTaskInput) (
 }
 
 func (c *Client) UpdateTask(ctx context.Context, taskID string, input domain.UpdateTaskInput) (*domain.Task, error) {
-	path := "/api/issues/" + taskID
+	path := "/api/issues/" + url.PathEscape(taskID)
 	body := map[string]any{}
 	if input.Title != nil {
 		body["title"] = *input.Title
@@ -455,11 +455,14 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body any, r
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 8*1024*1024+1))
 	if err != nil {
 		return fmt.Errorf("read response: %w", err)
 	}
 
+	if len(respBody) > 8*1024*1024 {
+		return fmt.Errorf("upstream response exceeds 8 MiB; narrow the query")
+	}
 	if resp.StatusCode >= 400 {
 		slog.Debug("api error response", "method", method, "path", path, "status", resp.StatusCode, "body", truncate(string(respBody), 500))
 		return &apiError{
@@ -479,10 +482,19 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body any, r
 
 func parseAPIErrorMessage(body []byte) string {
 	var payload struct {
-		Error string `json:"error"`
+		Error           string `json:"error"`
+		Code            string `json:"code"`
+		ExistingIssueID string `json:"existing_issue_id"`
 	}
 	if err := json.Unmarshal(body, &payload); err == nil && payload.Error != "" {
-		return payload.Error
+		message := payload.Error
+		if payload.Code != "" {
+			message += " code=" + payload.Code
+		}
+		if payload.ExistingIssueID != "" {
+			message += " existing_issue_id=" + payload.ExistingIssueID
+		}
+		return message
 	}
 	return truncate(string(body), 200)
 }

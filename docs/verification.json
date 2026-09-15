@@ -1,0 +1,101 @@
+{
+  "base": "https://mcp.wildflow.cn",
+  "checks": [
+    {
+      "check": "health",
+      "status": 200
+    },
+    {
+      "check": "unauthenticated MCP",
+      "status": 401
+    },
+    {
+      "check": "DCR",
+      "status": 201
+    },
+    {
+      "check": "consent page",
+      "status": 200
+    },
+    {
+      "check": "PAT approval",
+      "status": 303
+    },
+    {
+      "check": "code exchange",
+      "status": 200
+    },
+    {
+      "check": "code replay rejected",
+      "status": 400
+    },
+    {
+      "check": "initialize",
+      "status": 200
+    },
+    {
+      "check": "tools/list",
+      "status": 200
+    },
+    {
+      "check": "multica_list_projects",
+      "status": 200
+    },
+    {
+      "check": "multica_list_tasks",
+      "status": 200
+    },
+    {
+      "check": "multica_list_agents",
+      "status": 200
+    },
+    {
+      "check": "multica_list_statuses",
+      "status": 200
+    },
+    {
+      "check": "multica_create_task",
+      "status": 200
+    },
+    {
+      "check": "multica_update_task",
+      "status": 200
+    },
+    {
+      "check": "multica_get_task",
+      "status": 200
+    },
+    {
+      "check": "multica_add_comment",
+      "status": 200
+    },
+    {
+      "check": "multica_search_tasks",
+      "status": 200
+    },
+    {
+      "check": "cleanup temporary issue",
+      "status": 204
+    },
+    {
+      "check": "refresh token",
+      "status": 200
+    },
+    {
+      "check": "multica_list_projects",
+      "status": 200
+    },
+    {
+      "check": "revoke",
+      "status": 200
+    },
+    {
+      "check": "revoked access rejected",
+      "status": 401
+    }
+  ],
+  "tools": 16,
+  "write_test": true,
+  "tested_at": "2026-09-15",
+  "chatgpt_browser_acceptance": "pending user connection"
+}

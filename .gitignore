@@ -2,3 +2,7 @@ bin/
 *.exe
 *.test
 .env
+
+.local/
+deploy/build/
+__pycache__/
