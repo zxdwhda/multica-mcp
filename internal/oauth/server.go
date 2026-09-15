@@ -1,6 +1,7 @@
 package oauth
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -19,6 +20,7 @@ const scope = "multica:access"
 type Server struct {
 	Origin, Prefix, PAT string
 	Store               Store
+	ValidatePAT         func(context.Context, string) (bool, error)
 }
 type client struct {
 	Redirects []string `json:"redirect_uris"`
@@ -70,7 +72,7 @@ func (s *Server) authMetadata(w http.ResponseWriter, r *http.Request) {
 }
 func validRedirect(raw string) bool {
 	u, e := url.Parse(raw)
-	return e == nil && u.Scheme == "https" && u.Host != "" && u.User == nil && u.Fragment == "" && len(raw) < 2048
+	return e == nil && u.Scheme == "https" && u.Host != "" && u.User == nil && u.Fragment == "" && len(raw) < 2048 && !strings.ContainsAny(u.Host, " ;\"'\t\r\n")
 }
 func (s *Server) register(w http.ResponseWriter, r *http.Request) {
 	var in struct {
@@ -95,7 +97,7 @@ func (s *Server) register(w http.ResponseWriter, r *http.Request) {
 	jsonOut(w, 201, map[string]any{"client_id": id, "redirect_uris": in.Redirects, "client_id_issued_at": time.Now().Unix(), "token_endpoint_auth_method": "none", "grant_types": []string{"authorization_code", "refresh_token"}, "response_types": []string{"code"}})
 }
 
-var consent = template.Must(template.New("consent").Parse(`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>连接 Multica</title><body><main><h1>连接 WildFlow Multica</h1><p>授权此客户端读取及操作当前工作区的项目、任务、评论与 Agent。</p><p>授权后返回：<strong>{{.Redirect}}</strong></p><form method="post" action="{{.Action}}"><input type="hidden" name="request" value="{{.Request}}"><label>当前 Multica PAT <input type="password" name="pat" required autocomplete="off"></label><p>使用已配置的 Multica PAT 确认身份。PAT 不会发送给客户端。</p><button type="submit">授权连接</button></form></main></body></html>`))
+var consent = template.Must(template.New("consent").Parse(`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>连接 Multica</title><body><main><h1>连接 WildFlow Multica</h1><p>授权此客户端读取及操作当前工作区的项目、任务、评论与 Agent。</p><p>授权后返回：<strong>{{.Redirect}}</strong></p><form method="post" action="{{.Action}}"><input type="hidden" name="request" value="{{.Request}}"><label>当前 Multica PAT <input type="password" name="pat" required autocomplete="off"></label><p>使用此连接器所属 Multica 账号的有效 PAT 确认身份。PAT 不会发送给客户端。</p><button type="submit">授权连接</button></form></main></body></html>`))
 
 func (s *Server) authorize(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
@@ -127,17 +129,40 @@ func (s *Server) authorize(w http.ResponseWriter, r *http.Request) {
 		fail(w, 503, "temporarily_unavailable")
 		return
 	}
-	http.SetCookie(w, &http.Cookie{Name: "__Secure-multica-consent", Value: csrf, Path: s.Prefix + "/authorize", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: 600})
+	http.SetCookie(w, &http.Cookie{Name: consentCookie(hash(nonce)), Value: csrf, Path: s.Prefix + "/authorize", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: 600})
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Content-Security-Policy", "default-src 'none'; form-action 'self'; frame-ancestors 'none'")
-	w.Header().Set("Referrer-Policy", "no-referrer")
+	destination, _ := url.Parse(redirect)
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; form-action 'self' "+destination.Scheme+"://"+destination.Host+"; frame-ancestors 'none'")
+	// Native form navigation sends Origin:null under no-referrer. Keep the
+	// origin for CSRF checks without exposing OAuth query parameters.
+	w.Header().Set("Referrer-Policy", "strict-origin")
 	_ = consent.Execute(w, map[string]string{"Redirect": redirect, "Action": s.Prefix + "/authorize", "Request": nonce})
+}
+func consentCookie(id string) string { return "__Secure-multica-consent-" + id[:16] }
+
+var consentFailure = template.Must(template.New("failure").Parse(`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>Multica 连接需要重试</title><h1>暂未完成连接</h1><p>{{.}}</p><p><a href="https://chatgpt.com/plugins">返回 ChatGPT 插件页</a>，重新点击“使用 multica-mcp 登录”。</p></html>`))
+
+func consentError(w http.ResponseWriter, r *http.Request, status int, code, message string) {
+	if !strings.Contains(r.Header.Get("Accept"), "text/html") {
+		jsonOut(w, status, map[string]string{"error": code, "error_description": message})
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Referrer-Policy", "strict-origin")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+	w.WriteHeader(status)
+	_ = consentFailure.Execute(w, message)
 }
 func (s *Server) approve(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 16384)
-	if r.ParseForm() != nil || r.Header.Get("Origin") != s.Origin {
-		fail(w, 400, "invalid_request")
+	if r.ParseForm() != nil {
+		consentError(w, r, 400, "invalid_request", "授权表单不完整，请重新开始登录。")
+		return
+	}
+	if r.Header.Get("Origin") != s.Origin {
+		consentError(w, r, 400, "invalid_request", "当前页面的来源校验失败；请重新开始登录，不要继续提交旧页面。")
 		return
 	}
 	var record struct {
@@ -145,18 +170,43 @@ func (s *Server) approve(w http.ResponseWriter, r *http.Request) {
 		State string
 	}
 	id := hash(r.PostForm.Get("request"))
-	cookie, e := r.Cookie("__Secure-multica-consent")
-	if e != nil || s.Store.Get(r.Context(), "pending/"+id, &record) != nil || record.Grant.Expires <= time.Now().Unix() || subtle.ConstantTimeCompare([]byte(hash(cookie.Value)), []byte(record.Grant.CSRF)) != 1 {
-		fail(w, 400, "invalid_request")
+	cookie, e := r.Cookie(consentCookie(id))
+	if e != nil {
+		consentError(w, r, 400, "invalid_request", "浏览器未携带本次登录的 Cookie，请重新开始登录并允许此网站 Cookie。")
 		return
 	}
-	supplied, wanted := sha256.Sum256([]byte(r.PostForm.Get("pat"))), sha256.Sum256([]byte(s.PAT))
-	if subtle.ConstantTimeCompare(supplied[:], wanted[:]) != 1 {
-		fail(w, 401, "access_denied")
+	if e = s.Store.Get(r.Context(), "pending/"+id, &record); e != nil {
+		consentError(w, r, 503, "temporarily_unavailable", "无法读取本次授权状态，请重新登录或稍后重试。")
 		return
 	}
-	if s.Store.Claim(r.Context(), "consent/"+id) != nil {
-		fail(w, 400, "invalid_request")
+	if record.Grant.Expires <= time.Now().Unix() {
+		consentError(w, r, 400, "invalid_request", "本次授权页面已过期，请从 ChatGPT 重新开始登录。")
+		return
+	}
+	if subtle.ConstantTimeCompare([]byte(hash(cookie.Value)), []byte(record.Grant.CSRF)) != 1 {
+		consentError(w, r, 400, "invalid_request", "本次登录的 Cookie 不匹配，请从 ChatGPT 重新开始登录。")
+		return
+	}
+	candidate := strings.TrimSpace(r.PostForm.Get("pat"))
+	supplied, wanted := sha256.Sum256([]byte(candidate)), sha256.Sum256([]byte(s.PAT))
+	valid := subtle.ConstantTimeCompare(supplied[:], wanted[:]) == 1
+	if s.ValidatePAT != nil {
+		valid, e = s.ValidatePAT(r.Context(), candidate)
+		if e != nil {
+			consentError(w, r, 503, "temporarily_unavailable", "Multica 身份验证暂时不可用，请稍后重试。")
+			return
+		}
+	}
+	if !valid {
+		consentError(w, r, 401, "access_denied", "PAT 无效、已过期，或不属于此连接器配置的 Multica 账号。请使用同一账号的有效 PAT。")
+		return
+	}
+	if e = s.Store.Claim(r.Context(), "consent/"+id); e != nil {
+		if errors.Is(e, ErrUsed) {
+			consentError(w, r, 400, "invalid_request", "本次授权已提交，请返回 ChatGPT 查看结果；如未连接，请重新登录。")
+		} else {
+			consentError(w, r, 503, "temporarily_unavailable", "暂时无法保存授权，请稍后重试。")
+		}
 		return
 	}
 	code := random()
@@ -165,9 +215,12 @@ func (s *Server) approve(w http.ResponseWriter, r *http.Request) {
 	g.Expires = time.Now().Add(5 * time.Minute).Unix()
 	g.Family = random()
 	if s.Store.Put(r.Context(), "codes/"+hash(code), g) != nil {
-		fail(w, 503, "temporarily_unavailable")
+		consentError(w, r, 503, "temporarily_unavailable", "暂时无法签发授权码，请重新开始登录。")
 		return
 	}
+	http.SetCookie(w, &http.Cookie{Name: consentCookie(id), Value: "", Path: s.Prefix + "/authorize", Secure: true, HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: -1})
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Referrer-Policy", "strict-origin")
 	u, _ := url.Parse(g.Redirect)
 	q := u.Query()
 	q.Set("code", code)

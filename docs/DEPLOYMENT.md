@@ -19,7 +19,7 @@ issuer 为 `https://mcp.wildflow.cn/multica`，resource 为 `https://mcp.wildflo
 
 ## ChatGPT 接入
 
-在自定义 MCP 插件中填入 `https://mcp.wildflow.cn/multica/mcp`，选择 OAuth。服务提供动态客户端注册，客户端 ID/secret 不必预填。授权页面填写本机 Multica 配置中的 PAT，确认页面显示的返回地址属于当前 ChatGPT 客户端，然后授权连接。PAT 不会放入回调 URL 或交给 ChatGPT。
+在自定义 MCP 插件中填入 `https://mcp.wildflow.cn/multica/mcp`，选择 OAuth。服务提供动态客户端注册，客户端 ID/secret 不必预填。授权页面填写部署账号的任意有效 PAT，确认页面显示的返回地址属于当前 ChatGPT 客户端，然后授权连接。服务通过 `/api/me` 比对账号身份；登录 PAT 不保存、不替换部署凭据，也不会放入回调 URL 或交给 ChatGPT。连接成功后如工具列表为空，点击插件详情中的“刷新”。
 
 可通过本机配置文件取 PAT；不要把 PAT 粘贴到聊天、Issue、截图或 Git。具体 ChatGPT UI 可能变更，以实际授权流程为准。
 
@@ -37,6 +37,8 @@ issuer 为 `https://mcp.wildflow.cn/multica`，resource 为 `https://mcp.wildflo
 
 `go test -race ./...` 覆盖鉴权、PKCE、授权码并发重放、refresh 重放撤销、同意页 CSRF、分页和 HTTP 无状态请求；部署后还需完成真实 OAuth 和 MCP 调用以及 ChatGPT 页面接入。
 
+浏览器回归另覆盖来源策略、回调 CSP、多标签 Cookie 隔离、同账号新 PAT 通过、其他账号/过期 PAT 拒绝及上游异常。原生表单测试不可用手工设置 Origin 的 HTTP 脚本替代：`no-referrer` 会使浏览器表单 POST 带 `Origin:null`。当前使用 `strict-origin`，且仍拒绝空值或 null 来源。
+
 ## 2026-09-15 已定位的 FC 行为
 
 - 即使 GetFunction 回显 `customRuntimeConfig.port=8080`，新加坡实例启动错误仍提示检查 9000。部署脚本让程序直接监听 9000，实测恢复 200。
@@ -53,4 +55,8 @@ python3 scripts/smoke_http.py --write
 
 ## 当前验收结果（2026-09-15）
 
-正式域名 TLS、OAuth 授权/兑换/单次使用/刷新/撤销、MCP 初始化和 16 工具目录、真实项目/任务/Agent/状态读取，以及临时任务创建、清空描述、详情、评论、搜索均通过。测试任务已删除（HTTP 204）。逐项状态见 [verification.json](verification.json)。ChatGPT 网页内已创建 `multica-mcp` 插件并打开 OAuth 授权页，PAT 输入及最终连接确认等待用户完成；不将协议测试当作网页验收。
+0.3.2 已通过阿里云 CLI 部署。正式域名 OAuth 授权/兑换/重放拒绝/刷新/撤销、MCP 初始化、16 工具目录和真实读取均通过。
+
+ChatGPT 网页已使用同账号临时 PAT 完成 OAuth，显示已安装；刷新后加载全部 16 工具。ChatGPT 实际读取项目和任务，官网 wildflow 工作区基线为空（已通过 /api/workspaces 核对）。随后仅创建临时未分配 backlog 任务 WILD-2，完成描述更新、/note 评论和详情读取；通过官网 API 独立核对描述、评论与未分配状态后删除（HTTP 204），再次读取为 404。临时登录 PAT 未保存或部署，可撤销；原后端 PAT 保持不变。
+
+逐项状态见 [verification.json](verification.json)，浏览器对话见 [真实验收记录](https://chatgpt.com/c/6aa8f3eb-916c-83ec-84d5-63c8724f5e0c)。此前 0.3.1 的协议级创建、清空描述、搜索及清理结果单独保留。

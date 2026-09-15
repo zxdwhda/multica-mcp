@@ -111,7 +111,7 @@ func httpHandler(mcpServer *mcp.Server, cfg *config.Config) (http.Handler, error
 		if e != nil {
 			return nil, e
 		}
-		auth := &oauth.Server{Origin: cfg.OAuthOrigin, Prefix: cfg.HTTPPrefix, PAT: cfg.MulticaToken, Store: store}
+		auth := &oauth.Server{Origin: cfg.OAuthOrigin, Prefix: cfg.HTTPPrefix, PAT: cfg.MulticaToken, Store: store, ValidatePAT: oauth.SameAccountPATValidator(cfg.MulticaBaseURL, cfg.MulticaToken)}
 		auth.Routes(mux)
 		handler = auth.Protect(handler)
 	} else if cfg.MCPAPIKey != "" {

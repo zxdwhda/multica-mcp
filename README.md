@@ -8,7 +8,7 @@
 
 - 对接官方 `https://api.multica.ai` 或自托管 Multica；支持 workspace ID/slug。
 - stdio 与 Streamable HTTP；HTTP 无状态、JSON 响应，支持 FC 多实例。
-- OAuth 授权页使用部署绑定的 Multica PAT 验证身份；DCR 公共客户端、PKCE S256、授权码单次兑换、刷新令牌轮换与撤销。
+- OAuth 授权页接受部署账号的有效 Multica PAT 验证身份；DCR 公共客户端、PKCE S256、授权码单次兑换、刷新令牌轮换与撤销。登录 PAT 仅用于确认同一账号，不保存或替换部署凭据。
 - OAuth 数据加密存储于私有 OSS；使用 FC 角色临时凭据，代码不保存云 AK。
 - 分页返回 `items`、`source_total`、`has_more`、`next_offset`。全文搜索的项目/状态/负责人筛选在单页结果中执行，必须继续翻页；空页不代表没有后续匹配。
 - 任务详情的部分读取失败列入 `warnings`。批量创建失败返回已创建 ID、失败项及 `isError`，避免误报全量成功。

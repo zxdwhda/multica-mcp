@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -132,16 +133,58 @@ func TestConsentRequiresPATCookieOrigin(t *testing.T) {
 	for _, tc := range []struct {
 		origin, cookie, pat string
 		want                int
-	}{{"", "cookie", "test-pat", 400}, {s.Origin, "wrong", "test-pat", 400}, {s.Origin, "cookie", "wrong", 401}, {s.Origin, "cookie", "test-pat", 303}, {s.Origin, "cookie", "test-pat", 400}} {
+	}{{"", "cookie", "test-pat", 400}, {"null", "cookie", "test-pat", 400}, {s.Origin, "wrong", "test-pat", 400}, {s.Origin, "cookie", "wrong", 401}, {s.Origin, "cookie", "test-pat", 303}, {s.Origin, "cookie", "test-pat", 400}} {
 		values := url.Values{"request": {"pending"}, "pat": {tc.pat}}
 		r := httptest.NewRequest("POST", "/multica/authorize", strings.NewReader(values.Encode()))
 		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		r.Header.Set("Origin", tc.origin)
-		r.AddCookie(&http.Cookie{Name: "__Secure-multica-consent", Value: tc.cookie})
+		r.AddCookie(&http.Cookie{Name: consentCookie(hash("pending")), Value: tc.cookie})
 		w := httptest.NewRecorder()
 		m.ServeHTTP(w, r)
 		if w.Code != tc.want {
 			t.Fatalf("got %d want %d: %s", w.Code, tc.want, w.Body.String())
+		}
+	}
+}
+
+func TestConsentBrowserHeadersAndParallelTabs(t *testing.T) {
+	s, mux := fixture()
+	redirect := "https://chatgpt.com/connector/oauth/test"
+	_ = s.Store.Put(t.Context(), "clients/"+hash("client"), client{[]string{redirect}})
+	s.ValidatePAT = func(_ context.Context, pat string) (bool, error) { return pat == "temporary", nil }
+	q := url.Values{"client_id": {"client"}, "redirect_uri": {redirect}, "response_type": {"code"}, "resource": {s.resource()}, "code_challenge_method": {"S256"}, "code_challenge": {base64.RawURLEncoding.EncodeToString(make([]byte, 32))}, "state": {"state"}}
+	var cookies []*http.Cookie
+	var nonces []string
+	for i := 0; i < 2; i++ {
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, httptest.NewRequest("GET", "/multica/authorize?"+q.Encode(), nil))
+		if w.Code != 200 || w.Header().Get("Referrer-Policy") != "strict-origin" || !strings.Contains(w.Header().Get("Content-Security-Policy"), "form-action 'self' https://chatgpt.com;") {
+			t.Fatalf("browser headers: %d %v", w.Code, w.Header())
+		}
+		cookies = append(cookies, w.Result().Cookies()[0])
+		match := regexp.MustCompile(`name="request" value="([^"]+)"`).FindStringSubmatch(w.Body.String())
+		if len(match) != 2 {
+			t.Fatal("missing form nonce")
+		}
+		nonces = append(nonces, match[1])
+	}
+	if cookies[0].Name == cookies[1].Name {
+		t.Fatal("parallel tabs overwrite consent cookie")
+	}
+	for _, nonce := range nonces {
+		r := httptest.NewRequest("POST", "/multica/authorize", strings.NewReader(url.Values{"request": {nonce}, "pat": {"temporary"}}.Encode()))
+		r.Header.Set("Origin", s.Origin)
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		for _, cookie := range cookies {
+			r.AddCookie(cookie)
+		}
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, r)
+		if w.Code != 303 {
+			t.Fatalf("tab consent failed: %d %s", w.Code, w.Body.String())
+		}
+		if cleared := w.Result().Cookies(); len(cleared) != 1 || cleared[0].MaxAge != -1 {
+			t.Fatal("consent cookie not cleared")
 		}
 	}
 }

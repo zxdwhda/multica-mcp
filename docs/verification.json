@@ -54,6 +54,117 @@
       "status": 200
     },
     {
+      "check": "refresh token",
+      "status": 200
+    },
+    {
+      "check": "multica_list_projects",
+      "status": 200
+    },
+    {
+      "check": "revoke",
+      "status": 200
+    },
+    {
+      "check": "revoked access rejected",
+      "status": 401
+    }
+  ],
+  "tools": 16,
+  "write_test": false,
+  "version": "0.3.2",
+  "tested_at": "2026-09-15",
+  "deployment": {
+    "code_checksum": "17069663460157770845",
+    "last_modified": "2026-09-15T07:27:55Z",
+    "region": "ap-southeast-1",
+    "function": "multica-mcp"
+  },
+  "chatgpt_browser_acceptance": {
+    "oauth": "Installed successfully using a temporary same-account PAT",
+    "tool_catalog": 16,
+    "read_calls": [
+      "multica_list_projects",
+      "multica_list_tasks"
+    ],
+    "baseline": {
+      "workspace_slug": "wildflow",
+      "projects": 0,
+      "tasks": 0
+    },
+    "write_calls": [
+      "multica_create_task",
+      "multica_update_task",
+      "multica_add_comment",
+      "multica_get_task"
+    ],
+    "task_verification": {
+      "task_id": "01a0a3fa-f72b-7f17-81b3-d9fa0abd867d",
+      "identifier": "WILD-2",
+      "workspace_slug": "wildflow",
+      "description_verified": true,
+      "comment_verified": true,
+      "unassigned_backlog_verified": true,
+      "cleanup_status": 204,
+      "read_after_cleanup_status": 404
+    },
+    "conversation_url": "https://chatgpt.com/c/6aa8f3eb-916c-83ec-84d5-63c8724f5e0c"
+  },
+  "chatgpt_plugin_id": "asdk_app_6aa8f019b2008191a824208a7681da62",
+  "prior_0_3_1_protocol_write_checks": [
+    {
+      "check": "health",
+      "status": 200
+    },
+    {
+      "check": "unauthenticated MCP",
+      "status": 401
+    },
+    {
+      "check": "DCR",
+      "status": 201
+    },
+    {
+      "check": "consent page",
+      "status": 200
+    },
+    {
+      "check": "PAT approval",
+      "status": 303
+    },
+    {
+      "check": "code exchange",
+      "status": 200
+    },
+    {
+      "check": "code replay rejected",
+      "status": 400
+    },
+    {
+      "check": "initialize",
+      "status": 200
+    },
+    {
+      "check": "tools/list",
+      "status": 200
+    },
+    {
+      "check": "multica_list_projects",
+      "status": 200
+    },
+    {
+      "check": "multica_list_tasks",
+      "status": 200
+    },
+    {
+      "check": "multica_list_agents",
+      "status": 200
+    },
+    {
+      "check": "multica_list_statuses",
+      "status": 200
+    },
+    {
       "check": "multica_create_task",
       "status": 200
     },
@@ -94,9 +205,5 @@
       "status": 401
     }
   ],
-  "tools": 16,
-  "write_test": true,
-  "tested_at": "2026-09-15",
-  "chatgpt_browser_acceptance": "Plugin created; OAuth consent page open; awaiting user PAT entry",
-  "chatgpt_plugin_id": "asdk_app_6aa8f019b2008191a824208a7681da62"
+  "credentials": "Temporary login PAT was not stored or deployed; existing upstream credential unchanged."
 }
