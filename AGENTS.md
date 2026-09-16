@@ -1,5 +1,6 @@
 # multica-mcp 工作约定
 
+- 本项目是 zxdwhda 的个人开源项目，正式仓库为 https://github.com/zxdwhda/multica-mcp 。不要放入 wildsyn 或其他组织名下；真实密钥、OAuth 状态和私有配置不得提交。
 - 本目录是独立 Git 根和独立维护的产品，项目名为 `multica-mcp`。保留来源署名及 MIT 许可。
 - 产品目标和具体范围以用户当前要求为准；当前接入场景是 ChatGPT 网页插件调用远程 Multica，部署方向为阿里云 FC。
 - 来源与更新方式以 `UPSTREAM.md` 为准。不要引入来源仓库的分支、标签或历史，不创建 GitHub Fork 关系；按需导入选定补丁。

@@ -1,5 +1,7 @@
 # multica-mcp
 
+本项目由 [zxdwhda](https://github.com/zxdwhda) 独立维护，正式开源仓库：[zxdwhda/multica-mcp](https://github.com/zxdwhda/multica-mcp)。
+
 面向 ChatGPT 的远程 Multica MCP 服务。以 strider2038/multica-mcp 的实现为基础独立维护，保留 MIT 许可和来源说明；本仓库不携带来源项目的 Git 历史、分支或 Fork 关系。
 
 ## 功能
