@@ -6,3 +6,6 @@ var Version = "0.4.0"
 
 // MulticaAPI is the Multica REST API version this client targets.
 const MulticaAPI = "app-api@7ebe0bf58d99"
+
+// Revision is supplied by the deployment build.
+var Revision = "development"

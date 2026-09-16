@@ -121,13 +121,13 @@ func httpHandler(mcpServer *mcp.Server, cfg *config.Config) (http.Handler, error
 	mux.Handle(cfg.HTTPPrefix+"/mcp", handler)
 	mux.HandleFunc("GET "+cfg.HTTPPrefix+"/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"status":"ok","version":%q}`, version.Version)
+		fmt.Fprintf(w, `{"status":"ok","version":%q,"revision":%q}`, version.Version, version.Revision)
 	})
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return logging.HTTP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		r.Body = http.MaxBytesReader(w, r.Body, 12*1024*1024)
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		mux.ServeHTTP(w, r)
-	}), nil
+	})), nil
 }
 func runHTTP(mcpServer *mcp.Server, cfg *config.Config, ctx context.Context) {
 	handler, err := httpHandler(mcpServer, cfg)

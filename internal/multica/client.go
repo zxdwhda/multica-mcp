@@ -220,7 +220,7 @@ func (c *Client) CreateTask(ctx context.Context, input domain.CreateTaskInput) (
 	if err := c.doPost(ctx, path, body, &resp, true); err != nil {
 		return nil, fmt.Errorf("create task: %w", err)
 	}
-	slog.Info("task created", append([]any{"task_id", resp.ID, "title", resp.Title}, c.workspaceAttrs()...)...)
+	slog.Info("task created", append([]any{"task_id", resp.ID}, c.workspaceAttrs()...)...)
 	return &resp, nil
 }
 
@@ -464,7 +464,7 @@ func (c *Client) doRequest(ctx context.Context, method, path string, body any, r
 		return fmt.Errorf("upstream response exceeds 8 MiB; narrow the query")
 	}
 	if resp.StatusCode >= 400 {
-		slog.Debug("api error response", "method", method, "path", path, "status", resp.StatusCode, "body", truncate(string(respBody), 500))
+		slog.Debug("api error response", "method", method, "status", resp.StatusCode)
 		return &apiError{
 			StatusCode: resp.StatusCode,
 			Message:    parseAPIErrorMessage(respBody),

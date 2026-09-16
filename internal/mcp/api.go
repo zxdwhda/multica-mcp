@@ -25,6 +25,7 @@ func (s *Server) RegisterAPI(caller apicatalog.Caller, readOnly bool) {
 			description += " Tasks here are execution runs; issues are work items."
 		}
 		tool := &mcp.Tool{Name: op.Name, Description: description, InputSchema: op.Input, Annotations: &mcp.ToolAnnotations{ReadOnlyHint: op.ReadOnly, DestructiveHint: &destructive, OpenWorldHint: &open, IdempotentHint: op.ReadOnly}}
+		s.knownTools[tool.Name] = true
 		mcp.AddTool(s.mcpServer, tool, func(ctx context.Context, req *mcp.CallToolRequest, input map[string]any) (*mcp.CallToolResult, any, error) {
 			b, e := json.Marshal(input)
 			if e != nil {
