@@ -5,9 +5,9 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
  def redirect_request(self,*args,**kwargs):return None
 opener=urllib.request.build_opener(NoRedirect)
 def main():
- parser=argparse.ArgumentParser();parser.add_argument("--base",default="https://mcp.wildflow.cn");parser.add_argument("--write",action="store_true");parser.add_argument("--full-api",action="store_true");parser.add_argument("--redirect-uri",default="https://chatgpt.com/connector_platform/oauth/callback");args=parser.parse_args()
+ parser=argparse.ArgumentParser();parser.add_argument("--base",default="https://mcp.wildflow.cn");parser.add_argument("--config",type=pathlib.Path,default=pathlib.Path.home()/".multica/config.json");parser.add_argument("--write",action="store_true");parser.add_argument("--full-api",action="store_true");parser.add_argument("--redirect-uri",default="https://chatgpt.com/connector_platform/oauth/callback");args=parser.parse_args()
  base=args.base.rstrip('/');origin="https://mcp.wildflow.cn";resource=origin+"/multica/mcp"
- cfg=json.loads((pathlib.Path.home()/".multica/config.json").read_text());checks=[]
+ cfg=json.loads(args.config.expanduser().read_text());checks=[]
  def call(path,body=None,headers=None,method=None):
   h=headers or {};r=urllib.request.Request(base+path,data=body,headers=h,method=method)
   try:resp=opener.open(r,timeout=45)
