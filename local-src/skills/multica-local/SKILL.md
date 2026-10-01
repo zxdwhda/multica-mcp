@@ -10,7 +10,7 @@ description: 在本机通过 CLI 操作野生流动的自建 Multica，查询项
 当前指定目标（2026-10-02 核验）：
 
 - 服务：`https://multica.wildflow.cc`
-- 工作区：野生流动，`bd1fdaa8-e5d7-47be-a867-83ffec681874`
+- 工作区：野生流动；从当前 profile 读取 ID，与 `workspace list` 返回值核对。
 - Profile：`wildflow-sg`
 
 首次使用时检查当前配置中的服务地址和工作区 ID，再实际只读验证：
