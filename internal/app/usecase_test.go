@@ -342,3 +342,42 @@ func TestGetTaskReportsMissingSections(t *testing.T) {
 		t.Fatalf("%+v %v", task, e)
 	}
 }
+
+func TestGetTaskOptionalSections(t *testing.T) {
+	for _, test := range []struct {
+		name               string
+		comments, subtasks bool
+	}{
+		{"lightweight", false, false},
+		{"comments only", true, false},
+		{"subtasks only", false, true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			calls := map[string]int{}
+			uc, ts := setupTestServer(func(w http.ResponseWriter, r *http.Request) {
+				calls[r.URL.Path]++
+				switch r.URL.Path {
+				case "/api/issues/id":
+					fmt.Fprint(w, `{"id":"id","title":"Task"}`)
+				case "/api/issues/id/comments":
+					fmt.Fprint(w, `[{"id":"comment"}]`)
+				case "/api/issues/id/children":
+					fmt.Fprint(w, `{"issues":[{"id":"child"}]}`)
+				default:
+					t.Errorf("unexpected path %s", r.URL.Path)
+				}
+			})
+			defer ts.Close()
+			task, err := uc.GetTask(t.Context(), domain.GetTaskInput{TaskID: "id", IncludeComments: &test.comments, IncludeSubtasks: &test.subtasks})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if (calls["/api/issues/id/comments"] == 1) != test.comments || (calls["/api/issues/id/children"] == 1) != test.subtasks {
+				t.Fatalf("unexpected section requests: %v", calls)
+			}
+			if (len(task.Comments) == 1) != test.comments || (len(task.Subtasks) == 1) != test.subtasks {
+				t.Fatalf("unexpected sections: %+v", task)
+			}
+		})
+	}
+}

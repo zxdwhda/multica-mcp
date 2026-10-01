@@ -9,9 +9,9 @@
 395 个工具：官方当前 378 个用户 API 操作、原有 16 个便捷工具，以及 1 个 API 目录查询工具。覆盖项目、任务、评论、Agent、运行、小队、Skills、自动任务、工作区、成员、集成、插件、账号管理等，包含写入、删除和执行控制。完整清单见 [API-COVERAGE.md](docs/API-COVERAGE.md)。
 
 - 对接官方 `https://api.multica.ai` 或自托管 Multica；支持 workspace ID/slug。
-- stdio 与 Streamable HTTP；HTTP 无状态、JSON 响应，支持 FC 多实例。
+- stdio 与 Streamable HTTP；HTTP 无状态、JSON 响应，可部署在轻量服务器。
 - OAuth 授权页接受部署账号的有效 Multica PAT 验证身份；DCR 公共客户端、PKCE S256、授权码单次兑换、刷新令牌轮换与撤销。登录 PAT 仅用于确认同一账号，不保存或替换部署凭据。
-- OAuth 数据加密存储于私有 OSS；使用 FC 角色临时凭据，代码不保存云 AK。
+- OAuth 数据加密存储于私有 OSS；云凭据由部署环境提供，代码不保存云 AK。
 - 分页返回 `items`、`source_total`、`has_more`、`next_offset`。全文搜索的项目/状态/负责人筛选在单页结果中执行，必须继续翻页；空页不代表没有后续匹配。
 - 任务详情的部分读取失败列入 `warnings`。批量创建失败返回已创建 ID、失败项及 `isError`，避免误报全量成功。
 - 写操作可能触发 Agent；用触发预览、`suppress_run` 或 `backlog` 明确控制。批量创建是顺序操作，没有事务或自动去重。
@@ -44,9 +44,28 @@ go build -o bin/multica-mcp .
 
 健康检查 `GET /multica/healthz` 仅代表进程可服务，不代表上游授权有效。
 
+## 本地 CLI 与网页 Skills
+
+本地使用官方 Multica CLI 和 `multica-cli` Skill。固定来源、原文和 MIT 许可放在 `sources/multica-cli/`；`local-src/skills/multica-local/` 是本机自建服务的 profile 适配入口。日常命令显式添加 `--profile wildflow-sg`，保留历史默认配置。
+
+网页保留原 app-bound `multica-mcp` 插件：5 个 Skill 分别处理连接与发现、任务与评论、项目、Agent 运行及自动化。参照飞书采用入口 + 按需 references；执行现有 MCP schema，不包含本机命令或凭据。评论先摘要、再展开相关线程；飞书提供资料来源，Multica 管理执行状态。
+
+维护 `plugin-src/`，用以下命令生成 `plugins/multica-mcp/`、嵌入式标准 MCP resources 及上传包：
+
+```sh
+uv run python scripts/build_plugin.py --archive deploy/build/multica-plugin-1.1.0.zip
+uv run python scripts/build_plugin.py --check
+```
+
+打包校验原插件名、应用绑定、5 个 Skill 的本地链接和资源摘要。网页 Skill 可在当前 0.4.0 服务工作；新服务器代码额外提供 13 个 `resources/list` / `resources/read` 资源、可选详情读取开关和评论分页/截断响应头。服务器增强只有发布到轻量服务器后才生效。
+
+协议只读验收使用 `scripts/smoke_http.py --config <既有-profile-config>`；新服务器加 `--skills` 验证资源。`--full-api` 包含写入与删除检查，必须同时明确使用 `--write`；日常只读验收不使用二者。
+
 ## 服务器部署（当前）
 
 由 WildFlow 登记的 `deploy/sg-workbench/deploy.sh` 管理新加坡服务器上的容器、TLS 和切换。运行时使用新加坡自托管 Multica 的既有 `wildflow-sg` 身份及工作区，公网 MCP 地址保持 `https://mcp.wildflow.cn/multica/mcp`。官网账号的旧 MCP 授权不用于新实例，需要重新授权。
+
+迁移 OAuth 存储或部署 PAT 时，ChatGPT 仍可能沿用原 DCR client ID。重新授权前须核对并保留该客户端的原回调注册；否则旧连接在 `/authorize` 返回 `invalid_client`，无法进入登录表单。客户端注册与账号授权是不同记录，不复制旧 grant 或令牌。诊断与验收见 [OAuth 迁移检查](docs/OAUTH-MIGRATION.md)。
 
 ## 阿里云函数计算部署（历史）
 

@@ -6,3 +6,4 @@ bin/
 .local/
 deploy/build/
 __pycache__/
+.venv/

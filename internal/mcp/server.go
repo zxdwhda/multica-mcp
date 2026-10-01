@@ -13,6 +13,7 @@ import (
 	"multica-mcp/internal/app"
 	"multica-mcp/internal/domain"
 	"multica-mcp/internal/logging"
+	"multica-mcp/internal/skillbundle"
 	"multica-mcp/internal/version"
 )
 
@@ -34,6 +35,7 @@ func NewServer(useCase *app.UseCase, readOnly bool) *Server {
 
 	s.mcpServer.AddReceivingMiddleware(logging.Tools(s.knownTools))
 	s.registerTools(readOnly)
+	skillbundle.Register(s.mcpServer)
 	return s
 }
 
@@ -143,13 +145,15 @@ func (s *Server) handleListTasks(ctx context.Context, req *mcp.CallToolRequest) 
 }
 
 func getTaskTool() *mcp.Tool {
-	return newTool("multica_get_task", "Get a task with its description, status, assignee, comments, and subtasks.", properties(
+	return newTool("multica_get_task", "Get a task. Comments and subtasks are included by default; set include_comments/include_subtasks false for lightweight detail. Use multica_api_list_comments for summaries, selected threads and pagination.", properties(
 		stringProp("task_id", "Task ID or identifier (e.g. MUL-123)"),
+		booleanProp("include_comments", "Include comments, default true. Set false for separate bounded comment reads."),
+		booleanProp("include_subtasks", "Include subtasks, default true. Set false when not needed."),
 	), []string{"task_id"})
 }
 
 func (s *Server) handleGetTask(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	input := domain.GetTaskInput{TaskID: argsGetString(req, "task_id")}
+	input := domain.GetTaskInput{TaskID: argsGetString(req, "task_id"), IncludeComments: argsGetBoolPtr(req, "include_comments"), IncludeSubtasks: argsGetBoolPtr(req, "include_subtasks")}
 
 	task, err := s.useCase.GetTask(ctx, input)
 	if err != nil {
@@ -695,6 +699,14 @@ func argsGetBool(req *mcp.CallToolRequest, key string) bool {
 		return false
 	}
 	return b
+}
+
+func argsGetBoolPtr(req *mcp.CallToolRequest, key string) *bool {
+	value, ok := requestArgs(req)[key].(bool)
+	if !ok {
+		return nil
+	}
+	return &value
 }
 
 func argsGetStringSlice(req *mcp.CallToolRequest, key string) []string {

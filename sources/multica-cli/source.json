@@ -1,0 +1,9 @@
+{
+  "repository": "https://github.com/multica-ai/multica-cli",
+  "commit": "f391633862eed012760bb905d8c6d6df17f0e484",
+  "path": "skills/multica-cli",
+  "sha256": "13ceb75377546bc625be96ae9ae8c10a1b38768d726b0e631172388c58ea939d",
+  "license": "MIT",
+  "installed_at": "2026-10-01",
+  "local_destination": "~/.agents/skills/multica-cli"
+}
