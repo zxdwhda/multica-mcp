@@ -3,6 +3,7 @@ package multica
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -94,5 +95,33 @@ func TestAPIMultipartAndEmptyResponse(t *testing.T) {
 	result, e := c.CallAPI(t.Context(), apicatalog.Operation{Method: "POST", Path: "/api/upload-file"}, apicatalog.Input{Body: map[string]any{"description": "test"}, Files: []apicatalog.File{{Field: "file", Filename: "test.txt", Data: base64.StdEncoding.EncodeToString([]byte("test bytes"))}}})
 	if e != nil || result.Status != 204 || result.Body != nil {
 		t.Fatal(result, e)
+	}
+}
+
+func TestAPICommentPaginationHeaders(t *testing.T) {
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("roots_only") != "true" || r.URL.Query().Get("summary") != "true" {
+			t.Error("comment filters lost")
+		}
+		w.Header().Set("X-Multica-Next-Before", "2026-10-01T00:00:00Z")
+		w.Header().Set("X-Multica-Next-Before-Id", "cursor-id")
+		w.Header().Set("X-Comments-Truncated", "true")
+		w.Header().Set("Set-Cookie", "private=value")
+		fmt.Fprint(w, `[{"id":"root","content_truncated":true,"reply_count":42}]`)
+	}))
+	defer api.Close()
+	c := NewClient(api.URL, "secret", "test")
+	c.SetWorkspaceScope("ws", "")
+	r, err := c.CallAPI(t.Context(), apicatalog.Operation{Method: "GET", Path: "/api/issues/{id}/comments"}, apicatalog.Input{Path: map[string]string{"id": "issue"}, Query: map[string]any{"roots_only": true, "summary": true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, h := range []string{"X-Multica-Next-Before", "X-Multica-Next-Before-Id", "X-Comments-Truncated"} {
+		if r.Headers[h] == "" {
+			t.Errorf("missing %s", h)
+		}
+	}
+	if r.Headers["Set-Cookie"] != "" || r.Body.([]any)[0].(map[string]any)["reply_count"] != float64(42) {
+		t.Fatal("response fidelity or header boundary lost")
 	}
 }

@@ -112,7 +112,7 @@ func (c *Client) CallAPI(ctx context.Context, op apicatalog.Operation, in apicat
 		return nil, fmt.Errorf("upstream response interrupted")
 	}
 	out := &apicatalog.Response{Status: resp.StatusCode, ContentType: resp.Header.Get("Content-Type"), Headers: map[string]string{}}
-	for _, h := range []string{"ETag", "Location", "Retry-After", "Content-Range"} {
+	for _, h := range []string{"ETag", "Location", "Retry-After", "Content-Range", "X-Multica-Next-Before", "X-Multica-Next-Before-Id", "X-Comments-Truncated"} {
 		if v := resp.Header.Get(h); v != "" {
 			out.Headers[h] = v
 		}

@@ -1,0 +1,18 @@
+{
+  "apps": "./.app.json",
+  "author": {
+    "name": "App developer"
+  },
+  "description": "WildFlow 的 Multica 项目、任务与 Agent 协作",
+  "interface": {
+    "capabilities": [],
+    "category": "Other",
+    "defaultPrompt": null,
+    "developerName": "App developer",
+    "displayName": "multica-mcp",
+    "longDescription": "WildFlow 的 Multica 项目、任务与 Agent 协作",
+    "shortDescription": "Multica 项目、任务与 Agent 协作"
+  },
+  "name": "dev-6aa8f019b2008191a824208a7681da62",
+  "version": "1.1.0"
+}

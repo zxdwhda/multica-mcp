@@ -220,6 +220,9 @@ type ListTasksInput struct {
 
 type GetTaskInput struct {
 	TaskID string
+	// Nil preserves the original behavior of fetching both sections.
+	IncludeComments *bool
+	IncludeSubtasks *bool
 }
 
 type AssigneeType string

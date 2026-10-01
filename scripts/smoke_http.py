@@ -5,7 +5,8 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
  def redirect_request(self,*args,**kwargs):return None
 opener=urllib.request.build_opener(NoRedirect)
 def main():
- parser=argparse.ArgumentParser();parser.add_argument("--base",default="https://mcp.wildflow.cn");parser.add_argument("--config",type=pathlib.Path,default=pathlib.Path.home()/".multica/config.json");parser.add_argument("--write",action="store_true");parser.add_argument("--full-api",action="store_true");parser.add_argument("--redirect-uri",default="https://chatgpt.com/connector_platform/oauth/callback");args=parser.parse_args()
+ parser=argparse.ArgumentParser();parser.add_argument("--base",default="https://mcp.wildflow.cn");parser.add_argument("--config",type=pathlib.Path,default=pathlib.Path.home()/".multica/config.json");parser.add_argument("--write",action="store_true");parser.add_argument("--full-api",action="store_true");parser.add_argument("--skills",action="store_true",help="Require the new embedded Skill resources");parser.add_argument("--redirect-uri",default="https://chatgpt.com/connector_platform/oauth/callback");args=parser.parse_args()
+ if args.full_api and not args.write:parser.error("--full-api includes create/update/delete checks and requires --write")
  base=args.base.rstrip('/');origin="https://mcp.wildflow.cn";resource=origin+"/multica/mcp"
  cfg=json.loads(args.config.expanduser().read_text());checks=[]
  def call(path,body=None,headers=None,method=None):
@@ -37,6 +38,12 @@ def main():
   data=rpc('tools/call',{'name':name,'arguments':arguments});assert not data.get('isError'),data.get('content');return data.get('structuredContent',{})
  rpc('initialize',{'protocolVersion':'2025-06-18','capabilities':{},'clientInfo':{'name':'deployment-smoke','version':'1'}})
  catalog=rpc('tools/list',{});api_catalog=json.loads((pathlib.Path(__file__).resolve().parents[1]/'internal/apicatalog/catalog.json').read_text());assert len(catalog['tools'])==17+len(api_catalog['operations'])
+ if args.skills:
+  resources=rpc('resources/list',{});assert len(resources['resources'])==13
+  index=rpc('resources/read',{'uri':'skill://multica-mcp/index.json'});skills=json.loads(index['contents'][0]['text'])['skills'];assert len(skills)==5
+  for skill in skills:
+   for ref in skill['resources']:
+    content=rpc('resources/read',{'uri':ref['uri']})['contents'][0]['text'];assert 'sha256:'+hashlib.sha256(content.encode()).hexdigest()==ref['digest']
  for name in ['multica_list_projects','multica_list_tasks','multica_list_agents','multica_list_statuses']:tool(name,{})
  if args.full_api:
   for name in ['list_projects','list_issues','list_agents','list_labels','list_skills','list_squads','list_autopilots','list_agent_runtimes','list_workspaces']:
@@ -81,5 +88,5 @@ def main():
  status,h,raw=form('/multica/token',{'grant_type':'refresh_token','client_id':client,'refresh_token':tokens['refresh_token'],'resource':resource});expect('refresh token',status,200);new=json.loads(raw);access=new['access_token'];tool('multica_list_projects',{})
  status,h,raw=form('/multica/revoke',{'client_id':client,'token':new['refresh_token']});expect('revoke',status,200)
  status,h,raw=call('/multica/mcp',b'{}',{'Authorization':'Bearer '+access,'Content-Type':'application/json'});expect('revoked access rejected',status,401)
- out=pathlib.Path(__file__).resolve().parents[1]/'deploy/build';out.mkdir(parents=True,exist_ok=True);(out/'smoke-results.json').write_text(json.dumps({'base':base,'checks':checks,'tools':len(catalog['tools']),'write_test':args.write,'full_api_test':args.full_api},indent=2));print('All smoke checks passed',flush=True)
+ out=pathlib.Path(__file__).resolve().parents[1]/'deploy/build';out.mkdir(parents=True,exist_ok=True);(out/'smoke-results.json').write_text(json.dumps({'base':base,'checks':checks,'tools':len(catalog['tools']),'write_test':args.write,'full_api_test':args.full_api,'skills_test':args.skills},indent=2));print('All smoke checks passed',flush=True)
 if __name__=='__main__':main()

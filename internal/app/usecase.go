@@ -52,18 +52,22 @@ func (u *UseCase) GetTask(ctx context.Context, input domain.GetTaskInput) (*doma
 		return nil, err
 	}
 
-	comments, err := u.client.ListComments(ctx, task.ID)
-	if err != nil {
-		task.Warnings = append(task.Warnings, fmt.Sprintf("comments unavailable: %v", err))
-	} else {
-		task.Comments = comments
+	if input.IncludeComments == nil || *input.IncludeComments {
+		comments, err := u.client.ListComments(ctx, task.ID)
+		if err != nil {
+			task.Warnings = append(task.Warnings, fmt.Sprintf("comments unavailable: %v", err))
+		} else {
+			task.Comments = comments
+		}
 	}
 
-	children, err := u.client.ListChildIssues(ctx, task.ID)
-	if err != nil {
-		task.Warnings = append(task.Warnings, fmt.Sprintf("subtasks unavailable: %v", err))
-	} else {
-		task.Subtasks = children
+	if input.IncludeSubtasks == nil || *input.IncludeSubtasks {
+		children, err := u.client.ListChildIssues(ctx, task.ID)
+		if err != nil {
+			task.Warnings = append(task.Warnings, fmt.Sprintf("subtasks unavailable: %v", err))
+		} else {
+			task.Subtasks = children
+		}
 	}
 
 	return task, nil
