@@ -65,6 +65,8 @@ uv run python scripts/build_plugin.py --check
 
 由 WildFlow 登记的 `deploy/sg-workbench/deploy.sh` 管理新加坡服务器上的容器、TLS 和切换。运行时使用新加坡自托管 Multica 的既有 `wildflow-sg` 身份及工作区，公网 MCP 地址保持 `https://mcp.wildflow.cn/multica/mcp`。官网账号的旧 MCP 授权不用于新实例，需要重新授权。
 
+迁移 OAuth 存储或部署 PAT 时，ChatGPT 仍可能沿用原 DCR client ID。重新授权前须核对并保留该客户端的原回调注册；否则旧连接在 `/authorize` 返回 `invalid_client`，无法进入登录表单。客户端注册与账号授权是不同记录，不复制旧 grant 或令牌。诊断与验收见 [OAuth 迁移检查](docs/OAUTH-MIGRATION.md)。
+
 ## 阿里云函数计算部署（历史）
 
 保留以下脚本供历史恢复；迁移后不运行它重新发布。
